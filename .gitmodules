@@ -1,0 +1,6 @@
+[submodule "FlowFormer"]
+	path = FlowFormer
+	url = git@github.com:shneka-swamy/FlowFormer-Official.git
+[submodule "yolact"]
+	path = yolact
+	url = git@github.com:shneka-swamy/yolact.git
