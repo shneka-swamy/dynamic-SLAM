@@ -147,7 +147,7 @@ def main():
 
     args = arguments.argparser()
     dir_name = args.root_dir/args.seq_dir
-    output_name = str(args.seq_dir).split('/')[-2]
+    output_name = str(args.seq_dir).split('/')[-2] + "_" + str(args.eps_value) + ".png"
 
     if torch.cuda.is_available():
         args.cuda = True
@@ -226,7 +226,7 @@ def main():
         
         if args.run_homography:
             start_time = time.time()
-            geo_bbox = runHomography.geometry_evaluation(image1, image2)
+            geo_bbox = runHomography.geometry_evaluation(image1, image2, args.eps_value)
             homography_time.append(time.time() - start_time)
 
         if run_detection:

@@ -49,8 +49,8 @@ def get_epipolar_mismatch(matches, src_pts, dst_pts, kp2):
     return point2_2d
 
 # Draw the bounding box
-def draw_bbox(point2_2d, pointh_2d):
-    eps = 10
+def draw_bbox(point2_2d, pointh_2d, eps_value):
+    eps = eps_value
     point_append = np.append(point2_2d, pointh_2d, axis=0)
     df = pd.DataFrame(point_append, columns=['xcoord', 'ycoord'])
     db = DBSCAN(eps=eps, min_samples=1).fit(point_append)
@@ -87,13 +87,13 @@ def feature_detection(image1, image2):
     return src_pts, dst_pts, matches, kp2
 
 
-def geometry_evaluation(image1, image2):
+def geometry_evaluation(image1, image2, eps_value):
     src_pts, dst_pts, matches, kp2 = feature_detection(image1, image2)
     
     pointh_2d = get_homography(matches, src_pts, dst_pts, kp2)
     point2_2d = get_epipolar_mismatch(matches, src_pts, dst_pts, kp2)
   
-    store_bbox = draw_bbox(point2_2d, pointh_2d)
+    store_bbox = draw_bbox(point2_2d, pointh_2d, eps_value)
     return store_bbox
     
 

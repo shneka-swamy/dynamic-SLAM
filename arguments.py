@@ -50,6 +50,11 @@ def argparser():
     parser.add_argument('--display_scores', default=True, type=str2bool,
                         help='Whether or not to display scores in addition to classes')
     
+    # Parameter for homography estimation
+    parser.add_argument('--eps_value', default=10, type=int, help='epsilon value for DBSCAN')
+
+
+
 
     # For visualisation and evaluation
     parser.add_argument('--only_video', action='store_true', help='only generate video')
