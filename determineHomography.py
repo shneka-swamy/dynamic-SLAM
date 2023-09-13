@@ -90,10 +90,11 @@ def feature_detection(image1, image2):
 def geometry_evaluation(image1, image2, eps_value):
     src_pts, dst_pts, matches, kp2 = feature_detection(image1, image2)
     
-    pointh_2d = get_homography(matches, src_pts, dst_pts, kp2)
+    #pointh_2d = get_homography(matches, src_pts, dst_pts, kp2)
     point2_2d = get_epipolar_mismatch(matches, src_pts, dst_pts, kp2)
   
-    store_bbox = draw_bbox(point2_2d, pointh_2d, eps_value)
-    return store_bbox
+    #store_bbox = draw_bbox(point2_2d, pointh_2d, eps_value)
+    return []
+    #return store_bbox
     
 

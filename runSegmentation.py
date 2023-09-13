@@ -12,6 +12,7 @@ from collections import defaultdict
 import numpy as np
 from dataclasses import dataclass
 
+import time
 
 @dataclass
 class SegmentationResult:
@@ -166,7 +167,11 @@ def evalimage(args, net:Yolact, image):
     # frame is [480, 640, 3], make it [481, 640, 3]
     # frame = torch.cat((frame, frame[-1, :, :].unsqueeze(0)), dim=0)
     batch = FastBaseTransform()(frame.unsqueeze(0))
+    
+    start_time = time.time()    
     preds = net(batch)
+    end_time = time.time()
+    #print("Inference time: ", end_time - start_time)
 
     img_numpy, segResult = prep_display(args, preds, frame, None, None, undo_transform=False)
 
