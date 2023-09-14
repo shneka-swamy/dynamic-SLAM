@@ -18,7 +18,7 @@ for dataset in $(ls $dataset_path)
                     if [[ $dataset == *"walking"* ]] || [[ $dataset == *"sitting"* ]] || [[ $dataset == *"person"* ]]
                         then
                             echo "Running $dataset"
-                            python3 dynamic_to_static.py --seq_dir $dataset_path/$dataset/rgb --eps_value 40 --save-images --save-video
+                            python3 dynamic_to_static.py --seq_dir $dataset_path/$dataset/rgb --eps_value 10 --save-images --save-video --template_value ${no_tracking}
                     fi
             fi
         done    
