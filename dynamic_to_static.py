@@ -168,11 +168,12 @@ class Pipeline:
    
   def __call__(self, image, args):
     self.index += 1
-    if self.index <= 2 or (self.index) % args.template_value == 0:
-      return self.reset(image, args)
-    imageChanged = self.tracker(image)
-    self._lastImage = image
-    return imageChanged
+    return self.reset(image, args)
+    # if self.index <= 2 or (self.index) % args.template_value == 0:
+    #   return self.reset(image, args)
+    # imageChanged = self.tracker(image)
+    # self._lastImage = image
+    # return imageChanged
 
   def reset(self, image, args):
     with torch.no_grad():
@@ -180,7 +181,7 @@ class Pipeline:
     humanDetracker = HumanDetracker(self.segResult)
     if self.index > 0:
       geoBbox = runHomography.geometry_evaluation(self.lastImage, image, args.eps_value)
-      self.tracker = IndividualTracker(self.segResult, image, geoBbox)
+      # self.tracker = IndividualTracker(self.segResult, image, geoBbox)
     else:
       self.index = 1
       geoBbox = []

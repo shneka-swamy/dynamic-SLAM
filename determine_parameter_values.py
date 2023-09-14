@@ -125,7 +125,7 @@ def main():
         # Print for the best template
         df_store = find_best_temp(df, df_store, pattern)
 
-    plot_graph(df_store)
+    #plot_graph(df_store)
     # Plot a graph of eps vs rmse for each pattern
     #plot_graph(df_store)
 
