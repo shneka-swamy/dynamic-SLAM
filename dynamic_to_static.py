@@ -205,10 +205,10 @@ def main():
     if args.run_blur_detection:
         run_detection = True
 
-    if args.run_full_system:
-        print(f"running full system...")
-        count_images = len(sorted(glob(osp.join(dir_name, '*.png'))))
-        args.end_idx = count_images
+
+    print(f"running full system...")
+    count_images = len(sorted(glob(osp.join(dir_name, '*.png'))))
+    args.end_idx = count_images
 
     img_pairs = generate_pairs(dir_name, args.start_idx, args.end_idx)
     

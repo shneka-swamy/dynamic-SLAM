@@ -62,17 +62,31 @@ def find_best_eps(df, df_store, pattern):
 
     return df_store
 
-def find_best_temp(df, pattern):
+def find_best_temp(df, df_store, pattern):
     rmses = df['rmse'].to_numpy()
+    print(rmses)
     no_kfs = df['no_kf'].to_numpy()
 
-    print("Average RMSE: ", np.mean(rmses))
-    print("Average no_kf: ", np.mean(no_kfs))
+    # If rmses is empty, return
+    if rmses.size == 0:
+        mean_rmse = 0
+        no_kf = 0   
+    
+    else:
+        mean = np.mean(rmses)
+        no_kf = np.mean(no_kfs)
+    
+    return df_store.append({'pattern': pattern, 'rmse': mean, 'no_kf': no_kf}, ignore_index=True)
+
+    # print("Pattern: ", pattern)
+    # print("Average RMSE: ", rmses.mean())
+    # print("Average no_kf: ", np.mean(no_kfs))
 
 
 
 # Plot a graph of eps vs rmse for each pattern
-def plot_graph(df_store):
+# Not used for other dataset because of the way data is stored
+def plot_graph_rmse(df_store):
     import matplotlib.pyplot as plt
     import seaborn as sns
     sns.set_context("paper")
@@ -81,7 +95,7 @@ def plot_graph(df_store):
     plt.xlabel('eps')
     plt.ylabel('ATE_RMSE')
     plt.tight_layout()
-    plt.savefig('eps_vs_rmse.pdf')
+    plt.savefig('temp_vs_rmse.pdf')
 
 
 def main():
@@ -92,6 +106,7 @@ def main():
     choose_pattern = ['walking_xyz', 'sitting_rpy']
 
     #df_store = pd.DataFrame(columns=['pattern', 'eps', 'rmse'])
+    df_store = pd.DataFrame(columns=['pattern', 'rmse', 'no_kf'])
 
     for pattern in choose_pattern:
         df = pd.DataFrame(columns=['eps','runNo', 'rmse', 'no_kf'])
@@ -108,8 +123,9 @@ def main():
         #df_store = find_best_eps(df, df_store, pattern)
 
         # Print for the best template
-        find_best_temp(df, pattern)
+        df_store = find_best_temp(df, df_store, pattern)
 
+    plot_graph(df_store)
     # Plot a graph of eps vs rmse for each pattern
     #plot_graph(df_store)
 

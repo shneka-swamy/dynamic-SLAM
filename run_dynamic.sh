@@ -6,7 +6,8 @@ dataset_path=/media/scratch/TUM
 
 for dataset in $(ls $dataset_path)
     do
-    for no_tracking in 3 6 9 12 15 
+    for no_tracking in 3
+    #for no_tracking in 3 6 9 12 15 
     #for eps in 10 20 30 40 50 60 70
         do
             # If it is a directory then consider
