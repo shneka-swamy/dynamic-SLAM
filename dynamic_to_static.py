@@ -107,9 +107,10 @@ class MultiTracker:
     return maskImage
    
 class IndividualTracker:
-  def __init__(self, segResult, image):
+  def __init__(self, segResult, image, geoBbox):
     self.templates = []
     self.masks= []
+    self.templates2 = []
     imageGray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     for result in segResult:
       if result.class_name != 'person':
@@ -117,8 +118,13 @@ class IndividualTracker:
       x, y, w, h = result.bbox
       templateImage = imageGray[y:h, x:w]
       mask = result.mask[y:h, x:w].astype(np.uint8)*255
+      self.maskImage[y:h, x:w] = result.mask[y:h, x:w] == 0
       self.templates.append(templateImage)
       self.masks.append(mask)
+    for bbox in geoBbox:
+      x1, y1, x2, y2 = bbox
+      templateImage = imageGray[y1:y2, x1:x2]
+      self.templates2.append(templateImage)
 
   def __call__(self, image):
     imageGray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -129,6 +135,20 @@ class IndividualTracker:
       x, y, w, h = max_loc[0], max_loc[1], templateImage.shape[1], templateImage.shape[0]
       assert maskImage[y:y+h, x:x+w].shape == mask.shape, f"maskImage shape: {maskImage[y:y+h, x:x+w].shape}, mask shape: {mask.shape}"
       maskImage[y:y+h, x:x+w] = cv2.bitwise_and(maskImage[y:y+h, x:x+w], mask)
+
+    for templateImage in self.templates2:
+      res = cv2.matchTemplate(imageGray, templateImage, cv2.TM_CCOEFF_NORMED)
+      _, _, _, max_loc = cv2.minMaxLoc(res)
+      x, y, w, h = max_loc[0], max_loc[1], templateImage.shape[1], templateImage.shape[0]
+      maskImage[y:y+h, x:x+w] = 0
+
+    # for geoBbox in self.geoBboxes:
+    #   res = cv2.matchTemplate(imageGray, geoBbox, cv2.TM_CCOEFF_NORMED)
+    #   _, _, _, max_loc = cv2.minMaxLoc(res)
+    #   x, y, w, h = max_loc[0], max_loc[1], templateImage.shape[1], templateImage.shape[0]
+    #   assert maskImage[y:y+h, x:x+w].shape == mask.shape, f"maskImage shape: {maskImage[y:y+h, x:x+w].shape}, mask shape: {mask.shape}"
+    #   maskImage[y:y+h, x:x+w] = 0
+    
     return maskImage
 
 class Pipeline:
@@ -139,23 +159,24 @@ class Pipeline:
    
   def __call__(self, image, args):
     self.index += 1
-    if self.index % args.template_value == 0:
+    if self.index <= 2 and (self.index-1) % args.template_value == 0:
       return self.reset(image, args)
-    if self.index == 2:
-      self.geoBbox = runHomography.geometry_evaluation(self.lastImage, image, args.eps_value)
-    imageChanged = self.tracker(image, self.geoBbox)
+    imageChanged = self.tracker(image)
     self._lastImage = image
     return imageChanged
 
   def reset(self, image, args):
     with torch.no_grad():
       _, self.segResult = runSegmentation.evalimage(args, self.modelSeg, image)
-    self.tracker = HumanDetracker(self.segResult)
+    humanDetracker = HumanDetracker(self.segResult)
     if self.index > 0:
-      self.geoBbox = runHomography.geometry_evaluation(self.lastImage, image, args.eps_value)
+      geoBbox = runHomography.geometry_evaluation(self.lastImage, image, args.eps_value)
+      self.tracker = IndividualTracker(self.segResult, image, geoBbox)
+    else:
+      geoBbox = []
     self.index += 1
     self._lastImage = image
-    self._lastDehumanImage = self.tracker(image, [])
+    self._lastDehumanImage = humanDetracker(image, geoBbox)
     return self._lastDehumanImage
   
   @property
