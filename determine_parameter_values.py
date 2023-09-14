@@ -62,7 +62,7 @@ def find_best_eps(df, df_store, pattern):
 
     return df_store
 
-def find_best_temp(df, df_store, pattern):
+def find_best_temp(df, pattern):
     rmses = df['rmse'].to_numpy()
     no_kfs = df['no_kf'].to_numpy()
 
@@ -77,9 +77,7 @@ def find_best_temp(df, df_store, pattern):
     
     #return df_store.append({'pattern': pattern, 'rmse': mean, 'no_kf': no_kf}, ignore_index=True)
 
-    print("Pattern: ", pattern)
-    print("Average RMSE: ", mean_rmse)
-    print("Average no_kf: ", no_kf)
+    return (pattern, mean_rmse, no_kf)
 
 
 
@@ -103,6 +101,7 @@ def main():
     # Find all the folders inside the data folder
     folders = [f for f in args.data_folder.iterdir() if f.is_file()]
     choose_pattern = ['walking_xyz', 'sitting_rpy']
+    choose_pattern=["walking_xyz", "sitting_xyz", "sitting_halfsphere" ,"walking_rpy", "walking_static", "walking_halfsphere"]
 
     #df_store = pd.DataFrame(columns=['pattern', 'eps', 'rmse'])
     df_store = pd.DataFrame(columns=['pattern', 'rmse', 'no_kf'])
@@ -122,7 +121,23 @@ def main():
         #df_store = find_best_eps(df, df_store, pattern)
 
         # Print for the best template
-        df_store = find_best_temp(df, df_store, pattern)
+        pattern, rmse, no_kf = find_best_temp(df, pattern)
+        df_store = df_store.append({'pattern': pattern, 'rmse': rmse, 'no_kf': no_kf}, ignore_index=True)
+
+    # print rsme and no_kf as list
+    patternList = df_store['pattern'].to_numpy()
+    rsmeList = df_store['rmse'].to_numpy()
+    no_kfList = df_store['no_kf'].to_numpy()
+
+    # print list with brackets and comma separated
+    def printList(list):
+        print('[' + ', '.join(map(str, list)) + ']')
+    printList(patternList)
+    printList(rsmeList)
+    printList(no_kfList)
+
+    print(df_store)
+
 
     #plot_graph(df_store)
     # Plot a graph of eps vs rmse for each pattern
