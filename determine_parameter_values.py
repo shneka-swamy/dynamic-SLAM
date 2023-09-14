@@ -64,7 +64,6 @@ def find_best_eps(df, df_store, pattern):
 
 def find_best_temp(df, df_store, pattern):
     rmses = df['rmse'].to_numpy()
-    print(rmses)
     no_kfs = df['no_kf'].to_numpy()
 
     # If rmses is empty, return
@@ -73,14 +72,14 @@ def find_best_temp(df, df_store, pattern):
         no_kf = 0   
     
     else:
-        mean = np.mean(rmses)
+        mean_rmse = np.mean(rmses)
         no_kf = np.mean(no_kfs)
     
-    return df_store.append({'pattern': pattern, 'rmse': mean, 'no_kf': no_kf}, ignore_index=True)
+    #return df_store.append({'pattern': pattern, 'rmse': mean, 'no_kf': no_kf}, ignore_index=True)
 
-    # print("Pattern: ", pattern)
-    # print("Average RMSE: ", rmses.mean())
-    # print("Average no_kf: ", np.mean(no_kfs))
+    print("Pattern: ", pattern)
+    print("Average RMSE: ", mean_rmse)
+    print("Average no_kf: ", no_kf)
 
 
 
