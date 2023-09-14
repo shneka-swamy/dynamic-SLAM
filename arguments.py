@@ -11,7 +11,7 @@ def str2bool(v):
 
 
 def argparser():
-    parser = argparse.ArgumentParser(description='FlowFormer')
+    parser = argparse.ArgumentParser(description='FlowFormer', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     # Arguments for the optical flow model
     parser.add_argument('--eval_type', default='tum', help='the dataset used for evaluation is TUM')
     parser.add_argument('--root_dir', default=Path('..'))
@@ -52,7 +52,7 @@ def argparser():
     
     # Parameter for homography estimation
     parser.add_argument('--eps_value', default=10, type=int, help='epsilon value for DBSCAN')
-
+    parser.add_argument('--template_value', default=5, type=int, help='template value for DBSCAN')
 
 
 
@@ -61,15 +61,20 @@ def argparser():
     parser.add_argument('--run_full_system', action='store_true', help='run the full system')
     parser.add_argument('--run_flowformer', action='store_true', help='run the flowformer')
     parser.add_argument('--output_dir', default=Path('Output'), help='output directory')
-    parser.add_argument('--seg_output_dir', default=Path('Output/Segmentation'), help='segmentation output directory')
     parser.add_argument('--run_yolact', action='store_true', help='run the segmentation model')
     parser.add_argument('--run_blur_detection', action='store_true', help='run the blur detection model')
     parser.add_argument('--run_tracker', action='store_true', help='run the tracker')
     parser.add_argument('--run_contour', action='store_true', help='run the contour detection')
     parser.add_argument('--run_homography', action='store_true', help='run the homography estimation')
 
+    parser.add_argument('--save-images', action='store_true', help='save the image')
+    parser.add_argument('--save-video', action='store_true', help='save the video')
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    # put template_value as a 3-digit number
+    template_value = str(args.template_value).zfill(3)
+    args.output_dir = Path(f'Output_{template_value}')
+    return args
 
 
 def main():
