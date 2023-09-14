@@ -30,6 +30,7 @@ def generateImages(dirname, startIdx, endIdx):
 def generate_pairs(dirname, start_idx, end_idx):
     img_pairs = []
     files = generateImages(dirname, start_idx, end_idx)
+    assert len(files) > 1, f"Not enough images to generate pairs, only {len(files)} images"
     lastImage = files[0]
     for image in files[1:]:
       img_pairs.append((lastImage, image))
@@ -131,15 +132,39 @@ class IndividualTracker:
     return maskImage
 
 class Pipeline:
-  def __init__(self, image):
-    self.reset(image)
-    
-  def __call__(self, image):
-    # ...
-    self.lastImage = image
+  def __init__(self, image, args, modelSeg):
+    self.modelSeg = modelSeg
+    self.index = 0
+    self.reset(image, args)
+   
+  def __call__(self, image, args):
+    self.index += 1
+    if self.index % args.template_value == 0:
+      return self.reset(image, args)
+    if self.index == 2:
+      self.geoBbox = runHomography.geometry_evaluation(self.lastImage, image, args.eps_value)
+    imageChanged = self.tracker(image, self.geoBbox)
+    self._lastImage = image
+    return imageChanged
 
-  def reset(self, image):
-    self.lastImage = image
+  def reset(self, image, args):
+    with torch.no_grad():
+      _, self.segResult = runSegmentation.evalimage(args, self.modelSeg, image)
+    self.tracker = HumanDetracker(self.segResult)
+    if self.index > 0:
+      self.geoBbox = runHomography.geometry_evaluation(self.lastImage, image, args.eps_value)
+    self.index += 1
+    self._lastImage = image
+    self._lastDehumanImage = self.tracker(image, [])
+    return self._lastDehumanImage
+  
+  @property
+  def lastDehumanImage(self):
+    return self._lastDehumanImage
+
+  @property
+  def lastImage(self):
+    return self._lastImage
 
 
 def main():
@@ -147,7 +172,7 @@ def main():
 
     args = arguments.argparser()
     dir_name = args.root_dir/args.seq_dir
-    output_name = str(args.seq_dir).split('/')[-2] + "_" + str(args.eps_value) + ".png"
+    output_dir_name = str(args.seq_dir).split('/')[-2] + "_" + str(args.eps_value)
 
     if torch.cuda.is_available():
         args.cuda = True
@@ -159,11 +184,10 @@ def main():
         torch.set_default_tensor_type('torch.FloatTensor')
 
 
-    args.output_dir.mkdir(exist_ok=True)
-    args.seg_output_dir.mkdir(exist_ok=True)
+    args.output_dir.mkdir(exist_ok=True, parents=True)
 
-    rgb_output = args.output_dir/output_name/'rgb'
-    gray_output = args.output_dir/output_name/'gray'
+    rgb_output = args.output_dir/output_dir_name/'rgb'
+    gray_output = args.output_dir/output_dir_name/'gray'
 
     rgb_output.mkdir(exist_ok=True, parents=True)
     gray_output.mkdir(exist_ok=True, parents=True)
@@ -194,75 +218,89 @@ def main():
     template_time = []
     homography_time = []
 
-    # imageList = generateImages(dir_name, args.start_idx, args.end_idx)
+    def save_image(in_path, image):
+      if not args.save_images:
+        return
+      filename = Path(in_path).name
+      cv2.imwrite(str(rgb_output/filename), image)
+      cv2.imwrite(str(gray_output/filename), cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
 
-    # pipeline = Pipeline(read_image(imageList[0]))
+    if args.save_video:
+        vw_rgb = cv2.VideoWriter(str(args.output_dir/output_dir_name/'output.avi'), cv2.VideoWriter_fourcc(*'DIVX'), 15, (640, 480))
+        vw_gray = cv2.VideoWriter(str(args.output_dir/output_dir_name/'output_gray.avi'), cv2.VideoWriter_fourcc(*'DIVX'), 15, (640, 480), False)
 
-    # for image in tqdm(imageList[1:], total=len(imageList)-1):
-    #     currentImage = read_image(image)
-    #     pipeline(currentImage)
+    def save_video(image):
+      if not args.save_video:
+        return
+      vw_rgb.write(image)
+      vw_gray.write(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
     
+    imageList = generateImages(dir_name, args.start_idx, args.end_idx)
+    
+    pipeline = Pipeline(read_image(imageList[0]), args, modelSeg)
+    save_image(imageList[0], pipeline.lastDehumanImage)
+    save_video(pipeline.lastDehumanImage)
+
+    for imagePath in tqdm(imageList[1:], total=len(imageList)-1):
+        currentImage = read_image(imagePath)
+        imageChanged = pipeline(currentImage, args)
+        save_image(imagePath, imageChanged)
+        save_video(imageChanged)
 
 
-    for i, image in tqdm(enumerate(img_pairs), total=len(img_pairs)):
-        image1 = read_image(image[0])
-        image2 = read_image(image[1])
+    # for i, image in tqdm(enumerate(img_pairs), total=len(img_pairs)):
+    #     image1 = read_image(image[0])
+    #     image2 = read_image(image[1])
 
-        if args.run_flowformer:
-            with torch.no_grad():
-                start_time = time.time()
-                optical_flow = runOpticalFlow.visualize_flow(image1, image2, modelOptical, args.keep_size)
-                optical_flow_time.append(time.time() - start_time)
+    #     if args.run_flowformer:
+    #         with torch.no_grad():
+    #             start_time = time.time()
+    #             optical_flow = runOpticalFlow.visualize_flow(image1, image2, modelOptical, args.keep_size)
+    #             optical_flow_time.append(time.time() - start_time)
 
-        # Run through segmentation
-        if args.run_yolact:
-            start_time = time.time()
-            with torch.no_grad():
-                if i == 0:
-                  _, segResult1 = runSegmentation.evalimage(args, modelSeg, image1)
-                _, segResult2 = runSegmentation.evalimage(args, modelSeg, image2)
+    #     # Run through segmentation
+    #     if args.run_yolact:
+    #         start_time = time.time()
+    #         with torch.no_grad():
+    #             if i == 0:
+    #               _, segResult1 = runSegmentation.evalimage(args, modelSeg, image1)
+    #             _, segResult2 = runSegmentation.evalimage(args, modelSeg, image2)
 
-            segmentation_time.append(time.time() - start_time)
+    #         segmentation_time.append(time.time() - start_time)
         
-        if args.run_homography:
-            start_time = time.time()
-            geo_bbox = runHomography.geometry_evaluation(image1, image2, args.eps_value)
-            homography_time.append(time.time() - start_time)
+    #     if args.run_homography:
+    #         start_time = time.time()
+    #         geo_bbox = runHomography.geometry_evaluation(image1, image2, args.eps_value)
+    #         homography_time.append(time.time() - start_time)
 
-        if run_detection:
-            start_time = time.time()
-            blur1 = runBlurDetection.detect_blur(image1)
-            blur2 = runBlurDetection.detect_blur(image2)
-            # print(f"Blur1: {blur1}, Blur2: {blur2}")
-            blur_detection_time.append(time.time() - start_time)
+    #     if run_detection:
+    #         start_time = time.time()
+    #         blur1 = runBlurDetection.detect_blur(image1)
+    #         blur2 = runBlurDetection.detect_blur(image2)
+    #         # print(f"Blur1: {blur1}, Blur2: {blur2}")
+    #         blur_detection_time.append(time.time() - start_time)
         
-        if args.run_tracker:
-          start_time = time.time()
-          tracker = IndividualTracker(segResult1, image1)
-          mask = tracker(image2)
-          template_time.append(time.time() - start_time)
-
-            # start_time = time.time()
-            # tracker = MultiTracker(segResult1, image1)
-            # mask = tracker(image2)
-            # tracker_time.append(time.time() - start_time)
+    #     if args.run_tracker:
+    #       start_time = time.time()
+    #       tracker = IndividualTracker(segResult1, image1)
+    #       mask = tracker(image2)
         
 
-        # Use Seg bounding box and geometric bbox to determine the final bbox
-        if i == 0:
-          # in image1, use segResult1.bbox and geo_bbox to make the corresponding pixel in image1 to be 0
-          humanDetracker = HumanDetracker(segResult1)
-          image_changed = humanDetracker(image1, [])
-          # Save the image
-          output_name = Path(image[0]).name
-          cv2.imwrite(str(rgb_output/output_name), image_changed)
-          cv2.imwrite(str(gray_output/output_name), cv2.cvtColor(image_changed, cv2.COLOR_BGR2GRAY))
+    #     # Use Seg bounding box and geometric bbox to determine the final bbox
+    #     if i == 0:
+    #       # in image1, use segResult1.bbox and geo_bbox to make the corresponding pixel in image1 to be 0
+    #       humanDetracker = HumanDetracker(segResult1)
+    #       image_changed = humanDetracker(image1, [])
+    #       # Save the image
+    #       output_name = Path(image[0]).name
+    #       cv2.imwrite(str(rgb_output/output_name), image_changed)
+    #       cv2.imwrite(str(gray_output/output_name), cv2.cvtColor(image_changed, cv2.COLOR_BGR2GRAY))
 
-        output_name = Path(image[1]).name
-        humanDetracker = HumanDetracker(segResult2)
-        image_modif = humanDetracker(image2, geo_bbox)
-        cv2.imwrite(str(rgb_output/output_name), image_modif)
-        cv2.imwrite(str(gray_output/output_name), cv2.cvtColor(image_modif, cv2.COLOR_BGR2GRAY))
+    #     output_name = Path(image[1]).name
+    #     humanDetracker = HumanDetracker(segResult2)
+    #     image_modif = humanDetracker(image2, geo_bbox)
+    #     cv2.imwrite(str(rgb_output/output_name), image_modif)
+    #     cv2.imwrite(str(gray_output/output_name), cv2.cvtColor(image_modif, cv2.COLOR_BGR2GRAY))
 
     print("Number of times run: ", len(optical_flow_time))
 
@@ -275,3 +313,10 @@ def main():
     
 if __name__ == '__main__':
     main()
+
+    #       template_time.append(time.time() - start_time)
+
+    #         # start_time = time.time()
+    #         # tracker = MultiTracker(segResult1, image1)
+    #         # mask = tracker(image2)
+    #         # tracker_time.append(time.time() - start_time)
