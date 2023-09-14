@@ -118,7 +118,7 @@ class IndividualTracker:
       x, y, w, h = result.bbox
       templateImage = imageGray[y:h, x:w]
       mask = result.mask[y:h, x:w].astype(np.uint8)*255
-      self.maskImage[y:h, x:w] = result.mask[y:h, x:w] == 0
+      mask = cv2.bitwise_not(mask)
       self.templates.append(templateImage)
       self.masks.append(mask)
     for bbox in geoBbox:
@@ -128,7 +128,7 @@ class IndividualTracker:
 
   def __call__(self, image):
     imageGray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    maskImage = np.zeros((480, 640), dtype=np.uint8)
+    maskImage = np.ones((480, 640), dtype=np.uint8)
     for mask, templateImage in zip(self.masks, self.templates):
       res = cv2.matchTemplate(imageGray, templateImage, cv2.TM_CCOEFF_NORMED)
       _, _, _, max_loc = cv2.minMaxLoc(res)
@@ -142,6 +142,15 @@ class IndividualTracker:
       x, y, w, h = max_loc[0], max_loc[1], templateImage.shape[1], templateImage.shape[0]
       maskImage[y:y+h, x:x+w] = 0
 
+    # maskImage = maskImage*255
+
+    imageModified = cv2.bitwise_and(image, image, mask=maskImage.astype(np.uint8))
+
+    # # imshow image, imageModified, maskImage together
+    # imageCombined = np.concatenate((image, imageModified), axis=1)
+    # cv2.imshow("image", imageCombined)
+    # cv2.waitKey(33)
+
     # for geoBbox in self.geoBboxes:
     #   res = cv2.matchTemplate(imageGray, geoBbox, cv2.TM_CCOEFF_NORMED)
     #   _, _, _, max_loc = cv2.minMaxLoc(res)
@@ -149,7 +158,7 @@ class IndividualTracker:
     #   assert maskImage[y:y+h, x:x+w].shape == mask.shape, f"maskImage shape: {maskImage[y:y+h, x:x+w].shape}, mask shape: {mask.shape}"
     #   maskImage[y:y+h, x:x+w] = 0
     
-    return maskImage
+    return imageModified
 
 class Pipeline:
   def __init__(self, image, args, modelSeg):
@@ -159,7 +168,7 @@ class Pipeline:
    
   def __call__(self, image, args):
     self.index += 1
-    if self.index <= 2 and (self.index-1) % args.template_value == 0:
+    if self.index <= 2 or (self.index) % args.template_value == 0:
       return self.reset(image, args)
     imageChanged = self.tracker(image)
     self._lastImage = image
@@ -173,8 +182,8 @@ class Pipeline:
       geoBbox = runHomography.geometry_evaluation(self.lastImage, image, args.eps_value)
       self.tracker = IndividualTracker(self.segResult, image, geoBbox)
     else:
+      self.index = 1
       geoBbox = []
-    self.index += 1
     self._lastImage = image
     self._lastDehumanImage = humanDetracker(image, geoBbox)
     return self._lastDehumanImage
