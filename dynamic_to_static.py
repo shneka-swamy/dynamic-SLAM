@@ -198,7 +198,7 @@ def main():
         modelOptical = runOpticalFlow.build_model()
         print("Finished loading the optical flow model.")
     
-    if args.run_yolact:
+    if args.run_yolact or True:
         modelSeg = runSegmentation.load_model(args)
         print("Finised loading the segmentation model.")
 
