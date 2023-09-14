@@ -147,7 +147,7 @@ def main():
 
     args = arguments.argparser()
     dir_name = args.root_dir/args.seq_dir
-    output_name = str(args.seq_dir).split('/')[-2] + "_" + str(args.eps_value) + ".png"
+    output_name = str(args.seq_dir).split('/')[-2] + "_" + str(args.eps_value)
 
     if torch.cuda.is_available():
         args.cuda = True

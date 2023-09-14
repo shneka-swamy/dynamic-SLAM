@@ -1,6 +1,8 @@
 # Go through all folders in a particular folder
 
-dataset_path=../Datasets
+set -e
+
+dataset_path=/media/scratch/TUM
 
 for dataset in $(ls $dataset_path)
     do
@@ -9,8 +11,14 @@ for dataset in $(ls $dataset_path)
             # If it is a directory then consider
             if [ -d $dataset_path/$dataset ]
                 then
-                    echo "Running $dataset"
-                    python3 dynamic_to_static.py --seq_dir Datasets/$dataset/rgb --run_yolact --run_homography --eps_value $eps 
+                    # Check if the directory name contains walking or sitting or person
+                    # If it does then run the script
+
+                    if [[ $dataset == *"walking"* ]] || [[ $dataset == *"sitting"* ]] || [[ $dataset == *"person"* ]]
+                        then
+                            echo "Running $dataset"
+                            python3 dynamic_to_static.py --seq_dir $dataset_path/$dataset/rgb --run_yolact --run_homography --eps_value $eps 
+                    fi
             fi
         done    
     done
