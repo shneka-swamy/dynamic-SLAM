@@ -6,7 +6,8 @@ dataset_path=/media/scratch/TUM
 
 for dataset in $(ls $dataset_path)
     do
-    for eps in 10 20 30 40 50 60 70
+    for no_tracking in 3 6 9 12 15 
+    #for eps in 10 20 30 40 50 60 70
         do
             # If it is a directory then consider
             if [ -d $dataset_path/$dataset ]
@@ -17,7 +18,7 @@ for dataset in $(ls $dataset_path)
                     if [[ $dataset == *"walking"* ]] || [[ $dataset == *"sitting"* ]] || [[ $dataset == *"person"* ]]
                         then
                             echo "Running $dataset"
-                            python3 dynamic_to_static.py --seq_dir $dataset_path/$dataset/rgb --run_yolact --run_homography --eps_value $eps 
+                            python3 dynamic_to_static.py --seq_dir $dataset_path/$dataset/rgb --eps_value 40 --save-images --save-video
                     fi
             fi
         done    
